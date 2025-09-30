@@ -10,6 +10,7 @@ import com.parER.utils.CsvWriter
 import org.scify.jedai.datareader.entityreader.EntitySerializationReader
 import org.scify.jedai.datareader.groundtruthreader.GtSerializationReader
 import org.scify.jedai.utilities.datastructures.UnilateralDuplicatePropagation
+import java.io.File
 
 object SequentialDirtyMain extends App {
     import scala.jdk.CollectionConverters._
@@ -42,8 +43,8 @@ object SequentialDirtyMain extends App {
 
     // STEP 1. Initialization and read dataset - gt file
     val t0 = System.currentTimeMillis()
-    val eFile1  = Config.mainDir + Config.getsubDir() + Config.dataset1 + "Profiles"
-    val gtFile = Config.mainDir + Config.getsubDir() + Config.groundtruth + "IdDuplicates"
+    val eFile1  = Config.mainDir + Config.dataset1 + File.separator + Config.dataset1 + "Profiles"
+    val gtFile = Config.mainDir + Config.groundtruth + File.separator + Config.groundtruth + "IdDuplicates"
 
     if (Config.print) {
         println(s"Max memory: ${maxMemory} MB")

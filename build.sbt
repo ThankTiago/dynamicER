@@ -4,6 +4,8 @@ version := "0.1"
 
 scalaVersion := "2.13.1"
 
+javacOptions ++= Seq("-source", "11", "-target", "11")
+
 //http://premise.artifactoryonline.com/premise/public/com/esotericsoftware/minlog/minlog/1.2-slf4j-jdanbrown-0/minlog-1.2-slf4j-jdanbrown-0.pom
 //resolvers += "ArtifactoryOnline for minlog" at "https://premise.artifactoryonline.com/premise/public/"
 

@@ -14,6 +14,8 @@ import org.scify.jedai.utilities.datastructures.UnilateralDuplicatePropagation
 
 import scala.concurrent.Future
 
+import java.io.File
+
 object AkkaStreamParallelDirtyMain {
 
   def main(args: Array[String]): Unit = {
@@ -25,7 +27,6 @@ object AkkaStreamParallelDirtyMain {
     Config.commandLine(args)
     val priority = Config.priority
     val dataset1 = Config.dataset1
-    val dataset2 = Config.dataset2
     val threshold = Config.threshold
 
     val nBlockers = Config.blockers
@@ -34,8 +35,8 @@ object AkkaStreamParallelDirtyMain {
 
     // STEP 1. Initialization and read dataset - gt file
     val t0 = System.currentTimeMillis()
-    val eFile1  = Config.mainDir + Config.getsubDir() + Config.dataset1 + "Profiles"
-    val gtFile = Config.mainDir + Config.getsubDir() + Config.groundtruth + "IdDuplicates"
+    val eFile1  = Config.mainDir + Config.dataset1 + File.separator + Config.dataset1 + "Profiles"
+    val gtFile = Config.mainDir + Config.groundtruth + File.separator + Config.groundtruth + "IdDuplicates"
 
     if (Config.print) {
       println(s"Max memory: ${maxMemory} MB")
@@ -56,7 +57,10 @@ object AkkaStreamParallelDirtyMain {
     implicit val ec = system.dispatcher
 
     val tokenizer: (((EntityProfile, Int), Long)) => Future[(Int, TokenNGrams)] = {
-      case ((e,dId),id) => Future.apply{ new Tokenizer().execute(id.toInt, dId, e) }
+      case ((e,dId),id) => {
+        println("dId: " + dId + " id: " + id)
+        Future.apply{ new Tokenizer().execute(id.toInt, dId, e) }
+      }
     }
 
     val tokenBlocker = new TokenBlockerStage(Config.blocker, profiles1.size, 0, Config.cuttingRatio, Config.filteringRatio)
@@ -85,6 +89,12 @@ object AkkaStreamParallelDirtyMain {
       FlowShape(partition.in, merge.out)
     })
 
+    val incrementalFlow = Flow[(Int, TokenNGrams)]
+      .via(tokenBlocker)
+      .buffer(16, OverflowStrategy.backpressure)
+      .via(partitionFlow)
+      .via(storeModel)
+
     val program =
       Source(profiles1).zipWithIndex
       .mapAsync(1)(tokenizer)
@@ -92,13 +102,25 @@ object AkkaStreamParallelDirtyMain {
       .buffer(16, OverflowStrategy.backpressure)
       .via(partitionFlow)
       .via(storeModel)
-      .mapConcat(lc => lc.grouped(1000).toSeq)
-      .buffer(16, OverflowStrategy.backpressure)
-      .mapAsyncUnordered(nWorkers)(matcher).async
 
+    /*val program2 =
+      Source(profiles1).zipWithIndex
+      .grouped(200)
+      .mapAsync(1) { batch =>
+        println("batch: " + batch.size)
+        val tokenizedBatch = batch.map(tokenizer)
+          
+        tokenizedBatch.flatMap { tokenizedProfiles =>
+          println("tokenizedProfiles: " + tokenizedProfiles.size)
+          tokenizedProfiles.via(incrementalFlow)
+        }
+      }
+      .mapConcat(identity) // Flatten the results from each batch
+    */
     val done = program.runWith(collector)
 
     done.onComplete( result => {
+      println("done")
       val t4 = System.currentTimeMillis()
       val counter = result.get
       system.terminate()

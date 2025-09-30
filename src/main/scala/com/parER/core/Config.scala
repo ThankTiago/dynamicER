@@ -4,7 +4,7 @@ import java.io.File
 
 object Config {
 
-  val mainDir = System.getProperty("user.dir") + File.separator + "data" + File.separator
+  val mainDir = System.getProperty("user.dir") + File.separator + ".." + File.separator + ".." + File.separator + ".." + File.separator + ".." + File.separator + "data" + File.separator + "blocking" + File.separator + "task" + File.separator
 
   var dataset1 = ""
   var dataset2 = ""
